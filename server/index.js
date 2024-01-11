@@ -6,10 +6,6 @@ app.use(cors());
 require('dotenv').config(); 
 const { OpenAI } = require('openai');
 
-// Initialize the OpenAI API client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 app.get('/', (req, res) => {
   res.send('Hello from the server!');
@@ -71,6 +67,33 @@ app.get('/fetch-emails', async (req, res) => {
       res.status(500).send('Error fetching emails');
     }
   });
+
+  const extractInfoFromEmail = async (emailBody) => {
+    // Creating separate regex patterns for each piece of information.
+    const titlePattern = /Titre : (.*)\r\n/;
+    const referencePattern = /Référence : (.*)\r\n/;
+    const pricePattern = /Prix : (.*) Euros\r\n/;
+    const linkPattern = /Lien direct DOMimmo :\r\n(https:\/\/.*)\r\n/;
+    const contactNamePattern = /Nom du contact : (.*)\r\n/;
+    const emailPattern = /Email : (.*)\r\n/;
+    const phonePattern = /Téléphone : (.*)\r\n/;
+  
+    // Extracting information using the individual patterns.
+    const extract = (pattern) => {
+      const match = emailBody.match(pattern);
+      return match ? match[1] : null;
+    };
+  
+    return {
+      title: extract(titlePattern),
+      reference: extract(referencePattern),
+      price: extract(pricePattern),
+      link: extract(linkPattern),
+      contactName: extract(contactNamePattern),
+      email: extract(emailPattern),
+      phone: extract(phonePattern),
+    };
+  };
   
 async function handleEmail(gmail) {
     const listResponse = await gmail.users.messages.list({
@@ -98,6 +121,7 @@ async function handleEmail(gmail) {
       });
   
       const payload = messageResponse.data.payload;
+      
       let emailBody = '';
 
       if (payload.body && payload.body.data) {
@@ -110,23 +134,25 @@ async function handleEmail(gmail) {
           });
       }
       
-      console.log("Email Body: ", emailBody); // Log the email body
+      //console.log("Email Body: ", emailBody); // Log the email body
   
       const emailInfo = await extractInfoFromEmail(emailBody);
 
-    
       // Add parsed email to array
       emailData.push(emailInfo);
-      //break
+      break
     }
   
     console.log("Final Email Data: ", emailData); // Log final array of email data
     return emailData;
   }
+  
+async function extractInfoFromEmailChatGPT(emailBody) {
 
-
-async function extractInfoFromEmail(emailBody) {
-
+  // Initialize the OpenAI API client
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
   try {
     const response = await openai.completions.create({
         model: "gpt-3.5-turbo-instruct",
@@ -140,6 +166,7 @@ async function extractInfoFromEmail(emailBody) {
     return null;
   }
 }
+
 function generatePrompt(emailBody) {
     return `Parse the following email and extract the information in a JSON format with the fields: Title, Reference, Price, Link, Contact Name, Email, and Phone. \n\nEmail:\n\n${emailBody}\n\nJSON:`;
   }
