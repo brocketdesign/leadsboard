@@ -169,7 +169,7 @@ async function extractInfoFromEmailChatGPT(emailBody) {
 
 function generatePrompt(emailBody) {
     return `Parse the following email and extract the information in a JSON format with the fields: Title, Reference, Price, Link, Contact Name, Email, and Phone. \n\nEmail:\n\n${emailBody}\n\nJSON:`;
-  }
+}
   
   function parseOpenAIResponse(response) {
     try {
